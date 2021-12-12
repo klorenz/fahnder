@@ -1,0 +1,9 @@
+/.env
+/frontend/node_modules
+/frontend/build
+/frontend/.svelte-kit
+__pycache__
+/tmp
+.pytest_cache
+venv
+/fahnder.yml

@@ -1,0 +1,8 @@
+flask
+python-consul
+elasticsearch
+loginpass
+python-dotenv
+python-dateutil
+pyyaml
+flask-cors

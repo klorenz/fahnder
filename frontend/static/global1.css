@@ -1,0 +1,131 @@
+:root {
+  --svg-status-bg: rgb(255, 255, 255, 0.7);
+}
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Noto Sans", Ubuntu, Cantarell, "Helvetica Neue", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 14px;
+}
+body {
+  padding: 0;
+  margin: 0;
+}
+main {
+  padding: 8px;
+}
+td,
+th {
+  padding-right: 1em;
+}
+th {
+  text-align: left;
+}
+a {
+  color: rgb(16, 104, 191);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.icon-created {
+  --svg-status-bg: rgb(255, 255, 255, 1);
+}
+
+/* Tooltip container */
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+/* Tooltip text */
+.tooltip .tooltiptext {
+  visibility: hidden;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  padding: 5px 6px;
+  margin-top: 30px;
+  border-radius: 6px;
+  white-space: nowrap;
+
+  /* Position the tooltip text - see examples below! */
+  position: absolute;
+  z-index: 1;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
+@media only screen and (max-width: 760px) {
+  /* on thin screens (mobile): split table cells into multiple lines */
+  table,
+  tbody,
+  tr {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow: hidden;
+  }
+
+  tr {
+    border-top: 1px solid #ccc;
+  }
+  tr:last-of-type {
+    border-bottom: 1px solid #ccc;
+  }
+
+  /* hide table headers (but not display: none;, for accessibility) */
+  th {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  td {
+    border: none !important;
+    position: relative;
+    padding: 3px 0 3px 80px !important;
+  }
+
+  /* insert something like a table header */
+  td:before {
+    position: absolute;
+    /* left value mimics padding */
+    left: 6px;
+    padding-right: 10px;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  /* position the job icons at the bottom */
+  td:nth-of-type(2),
+  td:nth-of-type(3),
+  td:nth-of-type(4),
+  td:nth-of-type(5),
+  td:nth-of-type(6) {
+    order: 1;
+    padding: 5px 0px 5px 5px !important;
+  }
+
+  /* make sure that the text rows are full-width */
+  td:nth-of-type(1),
+  td:nth-of-type(7),
+  td:nth-of-type(8) {
+    width: 100%;
+  }
+
+  /* label the data */
+  td:nth-of-type(1):before {
+    content: "MR";
+  }
+  td:nth-of-type(7):before {
+    content: "Branch";
+  }
+  td:nth-of-type(8):before {
+    content: "Title";
+  }
+}

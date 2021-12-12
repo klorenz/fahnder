@@ -1,0 +1,37 @@
+{
+  "name": "fahnder",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "cross-env VITE_SERVER=http://localhost:5000 svelte-kit dev",
+    "help": "cross-env VITE_SERVER= svelte-kit dev --help",
+    "build": "cross-env VITE_SERVER= svelte-kit build",
+    "preview": "svelte-kit preview",
+    "prepare": "npm run smui-theme-light && npm run smui-theme-dark",
+    "smui-theme-light": "smui-theme compile static/smui.css -i src/theme",
+    "smui-theme-dark": "smui-theme compile static/smui-dark.css -i src/theme/dark"
+  },
+  "devDependencies": {
+    "@smui/button": "^6.0.0-beta.6",
+    "@smui/card": "^6.0.0-beta.6",
+    "@smui/dialog": "^6.0.0-beta.6",
+    "@smui/paper": "^6.0.0-beta.6",
+    "@smui/textfield": "^6.0.0-beta.6",
+    "@sveltejs/adapter-static": "^1.0.0-next.13",
+    "@sveltejs/kit": "next",
+    "loglevel": "^1.8.0",
+    "postcss": "^8.4.4",
+    "sass": "^1.44.0",
+    "smui-theme": "^6.0.0-beta.6",
+    "svelte": "^3.34.0",
+    "svelte-materialify": "^0.3.11",
+    "svelte-preprocess": "^4.9.8"
+  },
+  "type": "module",
+  "dependencies": {
+    "@fontsource/fira-mono": "^4.2.2",
+    "@lukeed/uuid": "^2.0.0",
+    "cookie": "^0.4.1",
+    "cross-env": "^7.0.3",
+    "svelte-search": "^2.0.0"
+  }
+}
