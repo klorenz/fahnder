@@ -3,7 +3,6 @@ from textwrap import dedent
 from importlib import import_module
 import logging
 
-
 # OAUTH2 implementation from https://github.com/ityoung/gitlab-oauth-example/blob/master/main.py
 
 from flask import Flask, redirect, url_for, session, jsonify, make_response, request, g, abort, current_app
@@ -13,8 +12,13 @@ from werkzeug.exceptions import HTTPException, Unauthorized
 from werkzeug.datastructures import WWWAuthenticate
 import requests
 from os import environ
-
 from collections import namedtuple
+import sys
+
+from flask import current_app, g
+
+from functools import wraps, partial
+
 
 def handle_authorize(remote, token, user_info):
     logger.debug("handle_authorize remote=%r token=%r user_info=%r", remote, token, user_info)
@@ -92,13 +96,17 @@ class AuthInfo:
         handle_authorize(self, None, user_info)
         return user_info
 
+def get_auth_info(name) -> AuthInfo:
+    """Return AuthInfo Object
 
-import logging
-import sys
+    Args:
+        name (str): Name of auth_info to get
 
-from flask import current_app, g
+    Returns:
+        AuthInfo: auth_info object
+    """
+    return current_app.config['auths'][name]
 
-from functools import wraps, partial
 
 # simple bearer authentication for requests
 class BearerAuth(requests.auth.AuthBase):
@@ -108,6 +116,19 @@ class BearerAuth(requests.auth.AuthBase):
 
     def __call__(self, r):
         r.headers["authorization"] = "Bearer " + self.token
+        return r
+
+class TokenAuth(requests.auth.AuthBase):
+
+    def __init__(self, token, headers = {"authorization": "Bearer {token}"}, values=None):
+        self.token = token
+        self.headers = headers
+        self.values = values or {}
+
+    def __call__(self, r):
+        for k,v in self.headers.items():
+            r.headers[k] = v.format(token=self.token, **values)
+
         return r
 
 # bearer authentication in OAuth2 context

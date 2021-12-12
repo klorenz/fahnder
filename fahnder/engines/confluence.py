@@ -43,9 +43,7 @@ class ConfluenceEngine(Engine):
         return results
 
     def search(self, request: SearchRequest):
-        self.logger.info(
-            "search: query=%s, page=%s, per_page=%s, before=%s, after=%s", 
-            query, page, per_page, before, after)
+        self.logger.info("search request: %r", request)
 
         offset = page_to_offset(request.page, request.per_page)
         cql = self.cql.format(query=request.query)
@@ -54,7 +52,6 @@ class ConfluenceEngine(Engine):
             cql += f" lastModified < {request.before.isoformat()}"
         if request.after is not None:
             cql += f" lastModified >= {request.after.isoformat()}"
-
         
         response = requests.get("https://wiki.moduleworks.com/rest/api/search", params={
             'cql': "("+cql+")",
@@ -62,13 +59,8 @@ class ConfluenceEngine(Engine):
             'limit': request.per_page,
         }, auth = self.requests_auth)
 
-        print(response.url)
-
-        print(response)
-
         results = []
         result = response.json()
-        print(result)
 
         for item in result['results']:
             results.append(Document(

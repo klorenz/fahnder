@@ -1,11 +1,18 @@
+# Fahnder
+
+This is a meta search engine with a pure Rest API for the backend and a svelte 
+frontend.  It supports engines behind authentication systems.
+
+For the start there are user/password authentication and OAuth (via loginpass) 
+supported.
+
+It is a quite early stage of this project.
+
 ## Development (Howto)
 
-Create a ".env" file and set:
+  Copy `fahnder-config-sample.yml` to `fahnder.yml`.
 
-```bash
-DEBUG=1
-TESTING=1
-```
+Edit the configfile and define auths and engines.
 
 If you have Ubuntu, you may have an outdated nodejs version, so install newest LTS version:
 
@@ -30,18 +37,13 @@ You need three terminals:
 
 - one for automatic frontend build on changing a file:
   ```bash
-  docker run --rm -v $(pwd)/frontend:/frontend node sh -c '
-    apt-get update -y ; apt-get install -y inotify-tools ;
-    cd /frontend ; npm install ;
-    while true ; do
-      inotifywait -e modify,create,delete,move -r . && npm run build ;
-      sleep 1 ;
-    done'
+  cd frontend
+  node run dev
   ```
 
 - one for elasticsearch server:
   ```bash
-  docker run -p 127.0.0.1:9200:9200 -p 127.0.0.1:9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.15.2
+  docker run -p 127.0.0.1:9200:9200 -p 127.0.0.1:9300:9300 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms2g -Xmx2g" docker.elastic.co/elasticsearch/elasticsearch:7.15.2
   ```
 
 - one for backend:

@@ -13,7 +13,7 @@ Here you find the common engine attributes::
 import datetime
 from .search_request import SearchRequest
 from .document import Document
-from .auth import BearerAuth
+from .auth import BearerAuth, get_auth_info, TokenAuth
 from requests.auth import HTTPBasicAuth
 from flask import current_app, session
 from os import environ
@@ -36,6 +36,7 @@ def page_to_offset(page: int, per_page: int, zero_offset: int = 1) -> int:
 
     return (page-1)*per_page+zero_offset
 
+
 class Engine:
     weight = 1
     name = None
@@ -46,6 +47,10 @@ class Engine:
     #    issue, project
     #
     document_type = None
+
+    @property
+    def auth_info(self):
+        return current_app.config['auths'][self.auth]
 
     @property
     def requests_auth(self):
@@ -67,25 +72,43 @@ class Engine:
 
         config = current_app.config
 
-        token_config_name = f'{self.auth.upper()}_BEARER_TOKEN'
+        auth = get_auth_info(self.auth)
 
-        for config_source  in (config, environ, session):
-            if token_config_name in config_source:
-                return BearerAuth(config_source[token_config_name])
+        if auth.type == 'oauth':
+            for prefix in (self.auth, self.auth.upper()):
+                token_config_name = f'{prefix}_BEARER_TOKEN'
 
+                for config_source  in (config, environ, session):
+                    if token_config_name in config_source:
+                        token = config_source[token_config_name]
+                        return TokenAuth(token = token)
 
-        basic_config_user_name = f'{self.auth.upper()}_BASIC_USER'
-        basic_config_password_name = f'{self.auth.upper()}_BASIC_PASSWORD'
+        if auth.type == 'token':
+            for prefix in (self.auth, self.auth.upper()):
+                token_config_name = f'{prefix}_TOKEN'
 
-        for config_source in (config, environ, session):
-            if (
-                basic_config_user_name in config_source and 
-                basic_config_password_name in config_source
-            ):
-                return HTTPBasicAuth(
-                    username = config_source[basic_config_user_name], 
-                    password = config_source[basic_config_password_name]
-                    )
+                for config_source  in (config, environ, session):
+                    if token_config_name in config_source:
+                        token = config_source[token_config_name]
+                        return TokenAuth(
+                            token = token,
+                            headers = auth.config.get('headers'),
+                            )
+
+        if auth.type == 'basic':
+            for prefix in (self.auth, self.auth.upper()):
+                basic_config_user_name = f'{prefix}_BASIC_USER'
+                basic_config_password_name = f'{prefix}_BASIC_PASSWORD'
+
+                for config_source in (config, environ, session):
+                    if (
+                        basic_config_user_name in config_source and 
+                        basic_config_password_name in config_source
+                    ):
+                        return HTTPBasicAuth(
+                            username = config_source[basic_config_user_name], 
+                            password = config_source[basic_config_password_name]
+                            )
 
         return None
 
@@ -115,3 +138,7 @@ class Engine:
     def answer(self, result):
         """Generate Answer from result"""
         return result
+
+    def sort_results(self, results: list, query: str) -> list:
+        results.sort(key = lambda x: len(query)*x['title'].count(query)/len(x['title']))
+        return results

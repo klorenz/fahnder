@@ -52,6 +52,13 @@ def create_app(config=None):
     if config is not None:
         app.config.update(config)
 
+    # read config file if present
+    if app.config.get('CONFIG_FILE'):
+        app.config['FAHNDER'] = yaml.safe_load(Path(app.config.get('CONFIG_FILE')).read_text())
+
+    # update config from config section of fahnder config
+    app.config.update(app.config.get('FAHNDER', {}).get('config', {}))
+
     if is_true(app.config.get('DEBUG', "")):
         logging.getLogger().setLevel(logging.DEBUG)
 
@@ -84,9 +91,6 @@ def create_app(config=None):
         # 'true' in CORS-Kopfzeile 'Access-Control-Allow-Credentials' 
         CORS(app, origins = 'http://localhost:3000', resources = '/*', supports_credentials=True)
 
-    # read config file if present
-    if app.config.get('CONFIG_FILE'):
-        app.config['FAHNDER'] = yaml.safe_load(Path(app.config.get('CONFIG_FILE')).read_text())
 
     # initialize authorization backends
     init_auths(app, app.config['FAHNDER'].get('auths'))
@@ -94,6 +98,7 @@ def create_app(config=None):
     # initialize engines
     engines.init(app)
 
+    # JSON error handler
     @app.errorhandler(HTTPException)
     def allerrorhandler(e):
         response = e.get_response()

@@ -1,0 +1,61 @@
+config:
+    FRONTEND_URL: "http://localhost:3000"
+
+    #/ turn on debugging (and auto reloading pages on change)
+    #/ turn this off in production
+    DEBUG: true
+
+    #/ turn on testing mode, needed for development.
+    #/ turn off in produciton
+    TESTING: true
+
+    #/ For configuring an OAuth authentication via authlib, you need
+    #/ to set here name in upper case + "_CLIENT_ID" and name in upper
+    #/ case + _CLIENT_SECRET.
+    #/
+    #/ E.g. for configuring an authenticator named "gitlab", you need
+    #/ to set GITLAB_CLIENT_ID and GITLAB_CLIENT_SECRET.
+
+
+engine_default_attributes:
+  # per default an engine's weight is 1
+  weight: 1
+  categories: general
+  # per default each engine returns only 5 results per page
+  per_page: 5
+
+
+auths:
+#  - module: loginpass
+#    type: oauth
+#    name: gitlab
+#    factory: 
+#      create_gitlab_backend:
+#        hostname: gitlab.example.com
+
+
+#  - module: fahnder.engines.jira
+#    type: basic
+#    name: jira
+#    factory:
+#      JiraBasicAuth:
+#        url: https://jira.example.com
+
+# which auth from auths to use as login.  Set null for no login
+login:
+  auth: gitlab
+
+# confiugre engines
+# engines:
+#  - module: fahnder.engines.confluence
+#    name: ConfluenceTitleSearch
+#    class: ConfluenceEngine
+#
+#    attributes:
+#      # weight of the engine
+#      weight: 2
+#      # auth to use
+#      auth: 'internal'
+#      server: https://confluence.example.com
+#      document_type: page
+#      cql: 

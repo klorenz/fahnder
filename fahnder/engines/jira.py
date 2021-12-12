@@ -1,8 +1,10 @@
-from ..engine import Engine
+from ..engine import Engine, page_to_offset
 from datetime import datetime
 from jira import JIRA, JIRAError
 from flask import session, current_app, abort
-
+from ..search_request import SearchRequest
+from ..results import Results
+from ..document import Document
 class JiraBasicAuth():
     def __init__(self, name, url):
         self.name = name
@@ -39,44 +41,58 @@ class JiraBasicAuth():
             website_url = None,
         )
 
-class JiraSummarySearch(Engine):
+class JiraEngine(Engine):
     weight = 2
-    name = 'JiraSummary'
+    name = 'JiraEngine'
     categories = ['general', 'issues']
     document_type = 'issue'
+    jql = ""
 
     def get_client(self):
-        if self.auth is not None:
-            auth = current_app.config['auths'][self.auth]
+        auth_info = self.auth_info
 
-        if auth.type == 'token':
-            jira = JIRA(self.hostname, token_auth=auth.token)
+        if auth_info.type == 'token':
+            jira = JIRA(self.hostname, token_auth=auth_info.token)
 
-        if auth.type == 'basic':
-            jira = JIRA(self.hostname, basic_auth=(auth.username, auth.password))
+        if auth_info.type == 'basic':
+            jira = JIRA(self.hostname, basic_auth=(auth_info.username, auth_info.password))
 
         return jira
 
-    def search(self, query: str, page: int, per_page: int, before: datetime = None, after: datetime = None) -> dict:
+    def search(self, request: SearchRequest) -> dict:
+        jira = self.get_client()
 
-        # if auth.type == 'oauth':
-        # see: https://jira.readthedocs.io/examples.html#oauth
-        #     jira = JIRA(basic_auth=(
+        offset = page_to_offset(request.page, request.per_page)
+        cql = self.cql.format(query=request.query)
 
-        return []
+        if request.before is not None:
+            cql += f" updatedDate < {request.before.isoformat()}"
+        if request.after is not None:
+            cql += f" updatedDate >= {request.after.isoformat()}"
+        
+        issues = jira.search_issues(self.jql, startAt=offset, maxResults=request.per_page)
+
+        results = []
+        for issue in issues:
+            results.append(Document(
+                type = 'issue',
+                url = issue.permalink(),
+                title = f"{issue.key}: {issue.fields.summary}",
+                published_at = issue.fields.updated,
+                excerpt = None,
+                fields = {
+                    'reporter': issue.fields.reporter.key,
+                    'assignee': issue.fields.assignee.key,
+                }
+            ))
+
+        results = self.sort_results(results, request.query)
+
+        return Results(
+            results = results,
+            total = results.total
+        )
 
     def suggest(self, query):
         return []
 
-
-class JiraTextSearch(Engine):
-    weight = 2
-    name = 'JiraText'
-    categories = ['general', 'issues']
-    document_type = 'issue'
-
-    def search(self, query: str, page: int, per_page: int, before: datetime = None, after: datetime = None) -> 'list[dict]':
-        return []
-
-    def suggest(self, query):
-        return []

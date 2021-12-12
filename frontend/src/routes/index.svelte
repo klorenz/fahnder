@@ -1,6 +1,6 @@
 <script>
     import Search from "svelte-search"
-    import { SERVER, getAuthInfo, postJSON } from '$lib/server'
+    import { SERVER, getAuthInfo, postJSON, getJSON } from '$lib/server'
     import ErrorMessage from "$lib/components/ErrorMessage.svelte"
     import LoginButton from "$lib/components/LoginButton.svelte"
     import LoginDialog from "$lib/components/LoginDialog.svelte"
@@ -35,7 +35,8 @@
     }
 
     async function foundResult(searchResult) {
-        data = {page, category, query}
+        let data = {page, category, query}
+        let key
         for (key in searchResult) {
             data[key] = searchResult[key]
         }

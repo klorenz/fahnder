@@ -8,7 +8,7 @@ export let pageAuth = null
 
 export async function getJSON(url, data) {
     let query = ""
-    for (k in data) {
+    for (let k in data) {
         query += '&'+k+'='+encodeURI(data[k])
     }
     if (query !== "") {
