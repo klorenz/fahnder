@@ -1,6 +1,7 @@
 from typing import Union
 from dateutil.parser import parse as dt_parse
 from datetime import datetime
+from flask import current_app, request, session
 
 class SearchRequest:
 
@@ -25,12 +26,17 @@ class SearchRequest:
 
         if after is not None and not isinstance(after, datetime):
             after = dt_parse(after)
-
         self.after = after
+
         if before is not None and not isinstance(after, datetime):
             self.before = dt_parse(before)
+        self.before = before
 
         self.per_page = int(per_page)
+
+        self.current_app = current_app._get_current_object()
+        self.request = request._get_current_object()
+        self.session = session._get_current_object()
 
     def __repr__(self):
         return (

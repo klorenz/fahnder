@@ -1,16 +1,28 @@
 """Engine to interact with Confluence search API
 
-You can instantiate a confluence class as follows:
+You can instantiate a confluence class as follows
 
-engines:
-    - name: my cool confluence search engine
+.. code-block:: yaml
+
+  engines:
+
+    - module: fahnder.engines.confluence
+      name: Confluence Title Search
+      class: ConfluenceEngine
+      categories:
+        - general
+
       attributes:
-        cql: 'title ~ {query}'
+        # weight of the engine
+        weight: 2
+        # auth to use
+        auth: jira
+        server: https://confluence.example.com
+        document_type: page
+        cql: title ~ "{query}"
+
 
 Bearer token can be passed in following ways:
-
-- global: from CONFLUENCE_BEARER_TOKEN var, useful for development
-- via header: X-FAHNDER-CONFLUENCE-BEARER-TOKEN
 
 """
 from ..engine import Engine, page_to_offset
@@ -25,17 +37,16 @@ from urllib.parse import urlencode
 from ..auth import BearerAuth
 from datetime import datetime
 from os import environ
+import logging
 
-# the bearer token unless 
-global_bearer_token = None
-
-def setup(app):
-    global global_bearer_token
-    global_bearer_token = environ.get('CONFLUENCE_BEARER_TOKEN')
-
-    # setup oauth here
+logger = logging.getLogger('engines.confluence')
 
 class ConfluenceEngine(Engine):
+    """Engine to do CQL searches on Confluence
+
+    Supports only basic auth and (Bearer) token auth by now.
+    
+    """
     auth = 'confluence'
 
     def sort_results(self, results: list, query: str) -> list:
@@ -43,7 +54,7 @@ class ConfluenceEngine(Engine):
         return results
 
     def search(self, request: SearchRequest):
-        self.logger.info("search request: %r", request)
+        logger.info("search request: %r", request)
 
         offset = page_to_offset(request.page, request.per_page)
         cql = self.cql.format(query=request.query)
@@ -57,7 +68,10 @@ class ConfluenceEngine(Engine):
             'cql': "("+cql+")",
             'start': offset,
             'limit': request.per_page,
-        }, auth = self.requests_auth)
+        }, auth = self.requests_auth(request))
+
+        if not response.ok:
+            raise response.raise_for_status()
 
         results = []
         result = response.json()
@@ -87,37 +101,3 @@ class ConfluenceEngine(Engine):
             del result['content']
 
         return results
-
-
-class ConfluenceSpaceSearch(ConfluenceEngine):
-    weight = 3
-    name = 'ConfluenceSpace'
-    categories = ['general']
-
-    def search(self, query: str, page: int, per_page: int, before: datetime = None, after=None):
-        return []
-
-    def suggest(self, query):
-        return []
-
-
-class ConfluenceTitleSearch(ConfluenceEngine):
-    weight = 2
-    name = 'ConfluenceTitle'
-    categories = ['general']
-    document_type = 'page'
-    cql = 'title ~ {query} AND type = page'
-
-class ConfluenceMainSpaceSearch(ConfluenceEngine):
-    weight = 5
-    name = 'ConfluenceMainSpace'
-    categories = ['general']
-    document_type = 'page'
-    cql = 'title ~ {query} AND space = MYSPACE AND type = page'
-
-class ConfluenceBlogSearch(ConfluenceEngine):
-    weight = 3
-    name = 'ConfluenceBlog'
-    categories = ['general', 'news']
-    document_type = 'page'
-    cql = 'title ~ {query} AND type = blogpost'

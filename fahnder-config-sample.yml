@@ -9,6 +9,11 @@ config:
     #/ turn off in produciton
     TESTING: true
 
+    #/ If you want to have sessions be persistent over service restarts
+    #/ Set a secret key here.  Default is to get a uuid4 string at start
+    #/ of process.
+    # SECRET_KEY: ""
+
     #/ For configuring an OAuth authentication via authlib, you need
     #/ to set here name in upper case + "_CLIENT_ID" and name in upper
     #/ case + _CLIENT_SECRET.
@@ -26,6 +31,7 @@ engine_default_attributes:
 
 
 auths:
+# connect to a gitlab instance
 #  - module: loginpass
 #    type: oauth
 #    name: gitlab
@@ -33,13 +39,14 @@ auths:
 #      create_gitlab_backend:
 #        hostname: gitlab.example.com
 
-
+# connect to a jira instance via BasicAuth
 #  - module: fahnder.engines.jira
 #    type: basic
 #    name: jira
 #    factory:
 #      JiraBasicAuth:
 #        url: https://jira.example.com
+
 
 # which auth from auths to use as login.  Set null for no login
 login:
@@ -55,7 +62,9 @@ login:
 #      # weight of the engine
 #      weight: 2
 #      # auth to use
-#      auth: 'internal'
+#      auth: jira
 #      server: https://confluence.example.com
 #      document_type: page
-#      cql: 
+#      cql: title ~ "{query}"
+#
+#

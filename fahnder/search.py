@@ -17,6 +17,7 @@ def search(request: SearchRequest):
     search_result = {
         'total': 0,
         'page': request.page,
+        'errors': []
         }
 
     # a dictionary by url, such that we can aggregate duplicate results from 
@@ -47,6 +48,12 @@ def search(request: SearchRequest):
         except Exception as exc:
             print("%r generated an exception: %r" % (engine, exc))
             traceback.print_exc()
+
+            search_result['errors'].append(dict(
+                error = str(exc),
+                engine = engine.name,
+            ))
+
             continue
 
         # process results
@@ -97,7 +104,7 @@ def search(request: SearchRequest):
 
 def result_score(result):
     # for now simply multiply average of weights and average of positions
-    return -(
+    return (
         sum(result['weights'])/len(result['weights']) * 
         -sum(result['positions'])/len(result['positions']) 
     )

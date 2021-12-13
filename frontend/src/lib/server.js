@@ -26,7 +26,7 @@ export async function getJSON(url, data) {
         return responseData
     }
 
-    throw new Exception(`Status ${response.status}: ${responseData.error}`)
+    throw new Error(`Status ${response.status}: ${responseData.error}`)
 }
 
 export async function postJSON(url, data) {
@@ -45,7 +45,7 @@ export async function postJSON(url, data) {
         return responseData
     }
 
-    throw new Exception(`Status ${response.status}: ${responseData.error}`)
+    throw new Error(`Status ${response.status}: ${responseData.error}`)
 }
 
 export async function getAuthInfo() {

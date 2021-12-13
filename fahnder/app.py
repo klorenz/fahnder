@@ -18,7 +18,6 @@ import re
 
 from .models import queries, interests, docs
 
-from .engines.confluence import ConfluenceTitleSearch, ConfluenceMainSpaceSearch
 from . import engines
 
 def request_settings():

@@ -15,11 +15,12 @@ from .search_request import SearchRequest
 from .document import Document
 from .auth import BearerAuth, get_auth_info, TokenAuth
 from requests.auth import HTTPBasicAuth
-from flask import current_app, session
 from os import environ
 import re
 from textwrap import dedent
+import logging
 
+logger = logging.getLogger('engine')
 
 def page_to_offset(page: int, per_page: int, zero_offset: int = 1) -> int:
     """Calculate offset from ``page`` and ``per_page``
@@ -36,6 +37,11 @@ def page_to_offset(page: int, per_page: int, zero_offset: int = 1) -> int:
 
     return (page-1)*per_page+zero_offset
 
+class SearchException(Exception):
+    def __init__(self, message=None, engine=None, code=None):
+        self.message = message
+        self.engine = engine
+        self.code = code
 
 class Engine:
     weight = 1
@@ -48,12 +54,10 @@ class Engine:
     #
     document_type = None
 
-    @property
-    def auth_info(self):
-        return current_app.config['auths'][self.auth]
+    def auth_info(self, request: SearchRequest):
+        return request.current_app.config['auths'][self.auth]
 
-    @property
-    def requests_auth(self):
+    def requests_auth(self, request: SearchRequest):
         """Return auth object for requests
 
         Protocol is:
@@ -70,9 +74,12 @@ class Engine:
         if self.auth is None:
             return None
 
-        config = current_app.config
+        config = request.current_app.config
+        session = request.session
 
-        auth = get_auth_info(self.auth)
+        auth = config['auths'][self.auth]
+
+        logger.debug("auth: %s", auth)
 
         if auth.type == 'oauth':
             for prefix in (self.auth, self.auth.upper()):

@@ -10,6 +10,8 @@ logger = logging.getLogger('routes')
 
 api_routes = Blueprint('fahnder_routes', __name__)
 
+# TODO: add login required
+
 @api_routes.route('/api/search', methods=['GET', 'POST'])
 def api_search():
     """Search engines
@@ -45,9 +47,16 @@ def api_search():
     """
 
     try:
-        result = search(SearchRequest(**request.values))
+        # posted JSON data gets priority
+        request_data = request.get_json()
+        # if there is no data
+        if request_data is None:
+            request_data = dict(request.values)
+        logger.debug("request values: %s" % request_data)
+        result = search(SearchRequest(**request_data))
         status = 200
     except Exception as e:
+        logger.warning("error in search for ", exc_info=1)
         result = {'error': str(e)}
         status = 400
 
@@ -139,6 +148,7 @@ def api_auths():
         )
 
     return jsonify(result)
+
 
 @api_routes.route('/login/basic/<name>', methods=['POST'])
 def login_basic(name):

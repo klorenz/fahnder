@@ -23,7 +23,7 @@ def init(app):
     #             {module_name}.setup(app, settings)
     #     '''), globals(), {'settings': module.get(settings, None)})
 
-    app.config['engines'] = []
+    app.config['engines'] = {}
     for engine_spec in settings.get('engines', []):
         module = import_module(engine_spec['module'])
 
@@ -39,4 +39,4 @@ def init(app):
         if hasattr(engine, 'setup'):
             engine.setup(app)
 
-        app.config['engines'].append(engine)
+        app.config['engines'][engine_spec['name']] = engine
