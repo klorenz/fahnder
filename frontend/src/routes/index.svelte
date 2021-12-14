@@ -6,6 +6,7 @@
     import LoginDialog from "$lib/components/LoginDialog.svelte"
     import { page } from '$app/stores'
     import Button, { Label, Icon } from '@smui/button'
+import { log } from "loglevel"
 
     let value = ""
 
@@ -17,6 +18,7 @@
     let query = $page.query.has('q') ? $page.query.get('q') : ""
     let page_no = $page.query.has('page') ? $page.query.get('page') : 1
     let searchError = undefined
+    let searchInput
 
     async function getSearchResults(_query, _category, _page) {
         query = _query
@@ -66,7 +68,7 @@
             <p>Loading...</p>
         {:then authInfo}
             {#each Object.values(authInfo.auths) as auth }
-                <LoginButton auth={auth}/>
+                <LoginButton auth={auth} on:dialogClose={() => { console.log("searchInput", searchInput) ; searchInput.focus()} } />
             {/each}
         {:catch error}
             <ErrorMessage>{error}</ErrorMessage>
@@ -74,7 +76,7 @@
 
     </div>
     <div id="search-bar">
-        <Search autofocus hideLabel label="Search" bind:value on:submit={search(value, category, page_no)} />
+        <Search autofocus hideLabel label="Search" bind:value on:submit={search(value, category, page_no)} bind:this={searchInput} />
     </div>
     {#if query}
         <div id="search-results-container">

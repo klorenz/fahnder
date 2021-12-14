@@ -30,6 +30,7 @@ from ..document import Document
 from ..results import Results
 from ..search_request import SearchRequest
 
+import re
 import requests
 from dateutil.parser import parse as dt_parse
 import logging
@@ -49,20 +50,38 @@ class ConfluenceEngine(Engine):
     """
     auth = 'confluence'
 
+    query_terms = False
+    term_query = None
+    term_operand = 'AND'
+
     def sort_results(self, results: list, query: str) -> list:
         results.sort(key = lambda x: len(query)*x['title'].count(query)/len(x['title']))
         return results
+
+    def is_valid_term(self, term):
+        return re.search(r'^\w[\w\-]*$', term)
 
     def search(self, request: SearchRequest):
         logger.info("search request: %r", request)
 
         offset = page_to_offset(request.page, request.per_page)
-        cql = self.cql.format(query=request.query)
+
+        if self.term_query is not None:
+            terms = request.query.strip().split()
+
+            term_cql = f" {self.term_operand} ".join([
+                "("+self.term_query.format(term=term)+")" for term in terms
+                if self.is_valid_term(term)
+                ])
+        else:
+            term_cql = ""
+
+        cql = self.cql.format(query=request.query, term_query=term_cql)
 
         if request.before is not None:
-            cql += f" lastModified < {request.before.isoformat()}"
+            cql = f"({cql}) and lastModified < {request.before.isoformat()}"
         if request.after is not None:
-            cql += f" lastModified >= {request.after.isoformat()}"
+            cql = f"({cql}) and lastModified >= {request.after.isoformat()}"
         
         response = requests.get("https://wiki.moduleworks.com/rest/api/search", params={
             'cql': "("+cql+")",

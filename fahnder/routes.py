@@ -1,8 +1,9 @@
-from flask import Blueprint, redirect, jsonify, request, g, make_response, current_app
+from flask import Blueprint, redirect, jsonify, request, g, make_response, current_app, session
 from .search import search
 from .utils import utcnow, get_sha
 from .models.interests import store_interest
 from .search_request import SearchRequest
+from .auth import login_required, handle_authorize
 
 import logging
 
@@ -13,6 +14,7 @@ api_routes = Blueprint('fahnder_routes', __name__)
 # TODO: add login required
 
 @api_routes.route('/api/search', methods=['GET', 'POST'])
+@login_required
 def api_search():
     """Search engines
     ---
@@ -70,6 +72,7 @@ def index():
 
 
 @api_routes.route('/api/recommended', methods=['GET', 'POST'])
+@login_required
 def api_recomended():
     """Return recommended results
 
@@ -86,6 +89,7 @@ def api_recomended():
 
 
 @api_routes.route('/api/index', methods=['POST'])
+@login_required
 def api_index():
     """index a document.  replaced, if already exists"""
 
@@ -116,6 +120,7 @@ def api_index():
 
 
 @api_routes.route('/api/found', methods=['POST'])
+@login_required
 def api_found():
     """Store the interest of a user in interests db
     """
@@ -124,6 +129,7 @@ def api_found():
 
 
 @api_routes.route('/api/auth_info', methods=['GET'])
+@login_required
 def api_auths():
     """Get information about auths, for logging in.
 
@@ -158,12 +164,12 @@ def login_basic(name):
         return jsonify({'error': "Expect JSON data"}), 400
 
     auth_info = current_app.config['auths'][name]
+    return handle_authorize(auth_info, None, None)
     result = auth_info.login(data['username'], data['password'])
 
     logger.debug("basic login result: %r", result)
 
     return jsonify(result)
-
 
 
 @api_routes.route('/login/token/<name>', methods=['POST'])
@@ -176,8 +182,29 @@ def login_token(name):
         request.values['token'],
     )
 
+    return handle_authorize(auth_info, None, None)
+
     logger.debug("token login result: %r", result)
 
     return jsonify(result)
 
 
+@api_routes.route('/logout', methods=['POST', 'GET'])
+@login_required
+def logout(name):
+    session.clear()
+    return redirect(f"{current_app.config['FRONTEND_URL']}/")
+
+
+@api_routes.route('/logout/<name>', methods=['POST', 'GET'])
+@login_required
+def logout_auth(name):
+    for key in list(session.keys()):
+        if key.startswith(f"{name}_"):
+            session.pop(key)
+    return redirect(f"{current_app.config['FRONTEND_URL']}/")
+
+# @auth_routes.route('/logout/<name>')
+# def logout(name):
+#     session.pop(f'{name}_user', None)
+#     return redirect('/')

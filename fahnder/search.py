@@ -4,6 +4,7 @@ from .models.interests import store_interest
 from .models.queries import store_query
 from .search_request import SearchRequest
 from flask import g
+from math import sqrt, log2
 import traceback
 
 def search(request: SearchRequest):
@@ -91,7 +92,7 @@ def search(request: SearchRequest):
     for result in results.values():
 
         # calclulate score
-        result['score'] = result_score(result)
+        result['score'] = result_score(result, len(results))
 
         # if title is same like query, this is most probably the answer
         if result['title'].lower() == request.query.lower():
@@ -99,12 +100,21 @@ def search(request: SearchRequest):
             search_result['answer'] = result
 
     # sort by score, 
-    search_result['results'] = list(sorted(results.values(), key=lambda r: r['score']))
+    search_result['results'] = list(reversed(sorted(results.values(), key=lambda r: r['score'])))
     return search_result
 
-def result_score(result):
-    # for now simply multiply average of weights and average of positions
-    return (
-        sum(result['weights'])/len(result['weights']) * 
-        -sum(result['positions'])/len(result['positions']) 
-    )
+def result_score(result, max_docs):
+    # scoring is only done within a page to order the docs
+    #
+    # see https://www.compose.com/articles/how-scoring-works-in-elasticsearch/
+    #
+    # Those docs are more important, which
+    #
+    # - Have a higher avarage position in their engine's results
+    # - Have a higher weight of engines
+
+    position = sum(result['positions'])/len(result['positions'])
+    engine_weight = sum(result['weights'])/sqrt(len(result['weights']))
+
+    return 1-1/(position*engine_weight)
+

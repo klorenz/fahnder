@@ -16,8 +16,11 @@
 
     const dispatch = createEventDispatcher()
 
-    function handleFormResponse() {
-        location.reload()
+    function handleFormResponse(data) {
+        localStorage.setItem(`${auth.name}_username`, postData['username'])
+        localStorage.setItem(`${auth.name}_password`, postData['password'])
+        auth.logged_in = true
+        dispatch('response', data)
     }
 
 </script>

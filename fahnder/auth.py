@@ -19,18 +19,30 @@ from flask import current_app, g
 
 from functools import wraps, partial
 
+from authlib.integrations.flask_client import OAuth
+
+logger = logging.getLogger('auth')
+oauth = OAuth()
+
 
 def handle_authorize(remote, token, user_info):
-    logger.debug("handle_authorize remote=%r token=%r user_info=%r", remote, token, user_info)
+    logger.debug("handle_authorize remote=%r token_is_none=%r user_info=%r", remote, token is None, user_info)
     # if token and user_info are none, loginpass could not handle
     # authorization. In this case check if 
     if token is None:
         data = request.get_json()
+        auth_info = get_auth_info(remote.name)
+
         logger.debug("handle_authorize data=%r", data)
         if 'token' in data:
+            user_info = auth_info.login(
+                request.values['token'],
+            )
             session[f"{remote.name}_TOKEN"] = data['token']
 
         else:
+            user_info = auth_info.login(data['username'], data['password'])
+
             session[f"{remote.name}_BASIC_USER"] = data['username']
             session[f"{remote.name}_BASIC_PASSWORD"] = data['password']
         # fetch user info from given URL, if possible
@@ -45,7 +57,21 @@ def handle_authorize(remote, token, user_info):
 
     return redirect(f"{current_app.config['FRONTEND_URL']}/")
 
-logger = logging.getLogger('auth')
+
+def login_required(func):
+    @wraps(func)
+    def check_login(*args, **kwargs):
+        primary_auth = current_app.config['FAHNDER'].get('auth')
+        if primary_auth is not None:
+            auth_info = get_auth_info(primary_auth)
+            if f"{auth_info.name}_user_info" not in session:
+                current_app.view_functions['/login/<name>'](auth_info.name)
+                raise Unauthorized()
+
+        return func(*args, **kwargs)
+        
+    return check_login
+
 
 class AuthInfo:
     def __init__(self, config, backend=None):
@@ -55,8 +81,7 @@ class AuthInfo:
         self.config = config
         self.backend = backend
 
-    @property
-    def logged_in(self):
+    def is_logged_in(self, session):
         logger.debug("session: %r", session)
         if self.type == 'oauth':
             return f'{self.name}_BEARER_TOKEN' in session
@@ -65,6 +90,11 @@ class AuthInfo:
                 f'{self.name}_BASIC_USER' in session and
                 f'{self.name}_BASIC_PASSWORD' in session
             )
+
+    @property
+    def logged_in(self):
+        # works only in application context
+        return self.is_logged_in(session)
 
     @property
     def login_route(self):
@@ -131,199 +161,16 @@ class TokenAuth(requests.auth.AuthBase):
 
         return r
 
-# bearer authentication in OAuth2 context
-class BearerAuthenticate(WWWAuthenticate):
-    # see https://tools.ietf.org/id/draft-ietf-oauth-v2-bearer-22.xml
-    INVALID_REQUEST = 'invalid_request'
-    INVALID_TOKEN = 'invalid_token'
-    INSUFFICIENT_SCOPE = 'insufficient_scope'
+# # bearer authentication in OAuth2 context
+# class BearerAuthenticate(WWWAuthenticate):
+#     # see https://tools.ietf.org/id/draft-ietf-oauth-v2-bearer-22.xml
+#     INVALID_REQUEST = 'invalid_request'
+#     INVALID_TOKEN = 'invalid_token'
+#     INSUFFICIENT_SCOPE = 'insufficient_scope'
 
-    scope = WWWAuthenticate.auth_property('scope')
-    error = WWWAuthenticate.auth_property('error')
-    error_description = WWWAuthenticate.auth_property('error_description')
-
-
-# def handle_authorize(remote, token, user_info):
-#     """Handle authorize
-
-#     This function is called from OAuth class from authlib.
-
-#     Token is a dictionary with keys `access_token`, `token_type` (typically
-#     'Bearer'), `refresh_token`, `scope` ('read_user') and `created_at`.
-
-#     `user_info` is a dictionary with keys `sub`, `name`, `email`, 
-#     `preferred_username` (which is the username), `profile` (a link to profile),
-#     `picture`, `website`.
-
-#     Args:
-#         remote ([type]): [description]
-#         token ([type]): [description]
-#         user_info ([type]): [description]
-#     """
-
-#     session['user_info'] = user_info
-#     return jsonify(user_info)
-
-def handle_bearer_authorize(remote, bearer_token, user_info):
-    session['user_info'] = user_info
-
-def verify_login(handle_bearer_authorize = lambda token, user_info: None):
-    # handled already by OAuth module
-    if 'user_info' in session:
-        return True
-
-    if 'authorization' not in request.headers:
-        raise Unauthorized(
-            www_authenticate=BearerAuthenticate(
-                auth_type='Bearer',
-                realm = g.oauth_hostname,
-            ))
-
-    # Maybe user is using another bearer token
-    (auth_type, token) = request.headers['authorization'].split(None, 1)
-    if auth_type != 'Bearer':
-        raise Unauthorized(www_authenticate=BearerAuthenticate(
-            error = BearerAuthenticate.INVALID_REQUEST,
-            error_description = "Only Bearer tokens allowed here."
-            ))
-            
-    client = g.oauth_client()
-    url = client.OAUTH_CONFIG['api_base_url'] + client.OAUTH_CONFIG['userinfo_endpoint']
-
-    # verify that the Bearer token has been issued by underlying identity provider
-    response = requests.get(url, headers = {'authorization': f'Bearer {token}'})
-
-    # TODO: maybe simply copy the headers from response
-    if response.status_code != 200:
-        raise Unauthorized(www_authenticate=BearerAuthenticate(
-            error = BearerAuthenticate.INVALID_REQUEST,
-            error_description = response
-            ))
-
-    return handle_bearer_authorize(remote = client, token=token, user_info = response.json())
-
-
-def init_oauth(app,
-    oauth_name,
-
-    client_id,
-    client_secret,
-    hostname = None,
-    backends = None,
-    handle_authorize = handle_authorize,
-    handle_bearer_authorize = handle_bearer_authorize,
-    ):
-    """Initialize OAuth
-
-    Args:
-        app (Flask): flask app
-        oauth_name (str): Name of the OAuth provider (must be python identifier)
-        client_id (str): client_id 
-        client_secret (str): client_secret
-        hostname (str, optional): used if no backends given.
-        backends (list, optional): List of OAuth backends. If none given, uses
-           hostname to connect to gitlab as identity provider.
-
-    Returns:
-        function: decorator ``login_required``, which you can use (as innermost 
-            decorator) to protect an endpoint
-    """
-
-    if backends is None:
-        backends = [ create_gitlab_backend(oauth_name, hostname) ]
-
-    oauth = OAuth(app)
-
-    assert oauth_name.isidentifier(), "Name must be a valid python identifier"
-
-    name_upper = oauth_name.upper() 
-
-    app.config[name_upper+'_CLIENT_ID'] = client_id
-    app.config[name_upper+'_CLIENT_SECRET'] = client_secret
-
-    sys.stderr.write('config: %s\n' % app.config)
-
-    bp = create_flask_blueprint(backends, oauth, handle_authorize)
-    app.register_blueprint(bp, url_prefix='')
-
-    @app.before_request
-    def add_oauth_object():
-        g.oauth = oauth
-        g.oauth_name = oauth_name
-        g.oauth_hostname = hostname
-        g.oauth_client = lambda: oauth.create_client(oauth_name)
-
-    def login_required(f=None, **kwargs):
-        if f is None:
-            return partial(login_required, **kwargs)
-
-        @wraps(f)
-        def decorator_function(*args, **kwargs):
-            verify_login(handle_bearer_authorize=handle_bearer_authorize)
-            return f(*args, **kwargs)
-
-        return decorator_function
-
-    return login_required
-
-# see https://github.com/authlib/demo-oauth-client/blob/master/flask-multiple-login/app.py
-
-# from authlib.integrations.flask_client import OAuth
-
-# @blueprint.route('/login/<name>')
-# def login(name):
-#     cl
-#     redirect_url = url_for('auth', name=name, _external=True)
-
-from authlib.integrations.flask_client import OAuth
-oauth = OAuth()
-
-# from flask import Blueprint
-# auth_routes = Blueprint('auth_routes', __name__)
-
-# @auth_routes.route('/login/<name>')
-# def login(name):
-#     client = oauth.create_client(name)
-#     if not client:
-#         abort(404)
-
-#     redirect_uri = url_for('auth', name=name, _external=True)
-#     return client.authorize_redirect(redirect_uri)
-
-
-# @auth_routes.route('/auth/<name>')
-# def auth(name):
-#     client = oauth.create_client(name)
-#     if not client:
-#         abort(404)
-
-#     token = client.authorize_access_token()
-#     user = token.get('userinfo')
-#     if not user:
-#         user = client.userinfo()
-
-#     session[f'{name}_user'] = user
-#     return redirect('/')
-
-
-# @auth_routes.route('/logout/<name>')
-# def logout(name):
-#     session.pop(f'{name}_user', None)
-#     return redirect('/')
-
-# @auth_routes.route('/logout')
-# def logout_all():
-#     for name in current_app.config['oauth_clients']:
-#         session.pop(f'{name}_user', None)
-#         session.pop(f'{name}_user', None)
-#         return redirect('/')
-    
-#     # for 
-#     return redirect('/')
-
-#def register(app, name, type, **kwargs):
-
-
+#     scope = WWWAuthenticate.auth_property('scope')
+#     error = WWWAuthenticate.auth_property('error')
+#     error_description = WWWAuthenticate.auth_property('error_description')
 
 class HttpBasicAuth:
     def __init__(self, authlib_obj, name, **kwargs):

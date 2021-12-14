@@ -4,6 +4,14 @@
     import Icon from '@smui/textfield/icon';
 
     let postData = {'token': ''}
+
+    function handleFormResponse() {
+        localStorage.setItem(`${auth.name}_username`, postData['username'])
+        localStorage.setItem(`${auth.name}_password`, postData['password'])
+
+        auth.logged_in = true
+    }
+
 </script>
 
 <Form bind:postData>

@@ -14,9 +14,9 @@
 
     function closeDialog() {
         logger.debug("closeDialog")
+        dispatch('close')
         open = false
     }
-
 
     $: logger.debug("dialog state", open)
 

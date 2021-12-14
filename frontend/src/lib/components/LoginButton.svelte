@@ -4,8 +4,11 @@
     import { onMount } from 'svelte'
     import logging from '$lib/logging'
     import LoginDialog from '$lib/components/LoginDialog.svelte' 
+    import { createEventDispatcher } from 'svelte'
 
     const logger = logging.getLogger("LoginButton")
+
+    const dispatch = createEventDispatcher()
 
     export let auth = {}
 
@@ -26,6 +29,9 @@
     // onMount(() => {
     //     logger.debug("auth", auth, "dialog closed", auth.name)
     // })
+
+    $: dialogOpen === false && dispatch('dialogClose')
+    $: dialogOpen === true && dispatch('dialogOpen')
 
 
 </script>

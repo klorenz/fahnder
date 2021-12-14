@@ -21,12 +21,12 @@ def client():
                     }
                 },
                 {
-                    'module': 'fahnder.loginpass.jira',
+                    'module': 'fahnder.engines.jira',
                     'type': 'basic',
                     'name': 'jira',
                     'factory': {
-                        'JiraBasic': {
-                            'hostname': 'some.jira.com'
+                        'JiraBasicAuth': {
+                            'url': 'https://some.jira.com'
                         }
                     },
                 }

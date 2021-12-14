@@ -24,6 +24,11 @@ export async function getJSON(url, data) {
 
     if (response.ok) {
         return responseData
+    // } else {
+        // if (response.status == 401) {
+
+
+        // }
     }
 
     throw new Error(`Status ${response.status}: ${responseData.error}`)
